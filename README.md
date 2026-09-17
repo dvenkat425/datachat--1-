@@ -47,20 +47,6 @@ npm run dev
 Open `localhost:3000`. Either drop in your own CSV or click "try it instantly with sample data"
 (510 rows, a dozen sales reps, a full year — the same dataset the live demo uses).
 
-## Running your own deployment
-
-The live link above already works for anyone — this section is only for standing up a separate
-copy under your own Anthropic key.
-
-```bash
-git clone <this-repo-url>
-cd datachat
-```
-
-Push it to your own GitHub, import it at [vercel.com/new](https://vercel.com/new) (Next.js is
-auto-detected, no config needed), add `ANTHROPIC_API_KEY` under the project's environment
-variables, deploy.
-
 ## Known limitations
 
 - Rows are capped at 5,000 per question to keep the payload to the serverless function
