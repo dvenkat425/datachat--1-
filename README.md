@@ -1,83 +1,71 @@
 # DataChat
 
-Upload any CSV and ask questions about it in plain English — get back a direct answer plus
-an auto-generated chart, computed for real (not guessed by the model).
+Ask a spreadsheet a question in plain English and get back a real, computed answer — not a
+guess.
 
 ![DataChat screenshot](docs/screenshot.png)
 
-**[Live demo](#)** · Built by [Deepa Venkat](https://github.com/) with Next.js and the Claude API
+**[Try it live](https://datachat-1.vercel.app/)** — no login, no upload required, click "try it
+instantly with sample data." · [Source](.)
 
-## Why this exists
+## The problem
 
-Most "chat with your data" demos just paste a sample of rows into a prompt and hope the model's
-arithmetic is right. It usually isn't, once you ask for a sum, an average, or a "top 10." This
-project instead treats Claude as a **query planner**, not a calculator:
+Most "chat with your data" demos paste a sample of rows into the prompt and let the model
+eyeball an answer. That works for "what columns do I have," and quietly falls apart the moment
+someone asks for a sum, an average, or a "top 10" — LLMs are unreliable at arithmetic over data
+they can't fully see, and a wrong number that *sounds* confident is worse than no answer.
 
-1. The browser parses your CSV and sends the model a schema summary — column names, types, and a
-   few example values. It never sends the model the whole file as "context to eyeball."
-2. Claude decides *what computation* answers your question by calling a `run_query` tool
-   (sum, average, group-by, top-N, filtered count, etc.) and specifying the parameters.
-3. Plain TypeScript — not the model — executes that computation over the full dataset.
-4. Claude gets the real, computed result back and writes the final answer using those exact
-   numbers, plus picks a chart to visualize it if that's useful.
+## The approach
 
-That loop (plan → execute in real code → narrate the verified result) is the same shape used by
-production AI tools that sit on top of customer data — which is why this was my pick for a
-Forward-Deployed-Engineer-style portfolio project.
+Claude never does the math. It plans the query; plain TypeScript executes it.
+
+1. The browser parses the uploaded CSV and sends the model a **schema summary** — column names,
+   types, a few sample values. Not the raw data.
+2. Claude decides what computation answers the question by calling a `run_query` tool — `sum`,
+   `average`, `groupby_sum`, `top_n`, a filtered count, etc. — and specifies the parameters.
+3. A pure function executes that operation over the full (capped) dataset. No LLM involved.
+4. Claude gets the real result back and writes the final answer using those exact numbers, and
+   picks a chart if one would help.
+
+This plan → execute → narrate shape is the same one production tools use when they sit an LLM on
+top of customer data, which is why I built it this way rather than the simpler prompt-and-hope
+version.
 
 ## Stack
 
-- **Next.js 16** (App Router) + TypeScript + Tailwind CSS
-- **Claude API** (`@anthropic-ai/sdk`) using tool use / function calling
-- **Papaparse** for CSV parsing, **Recharts** for charts
-- Deployed on **Vercel**
+Next.js 16 (App Router) · TypeScript · Tailwind CSS · Claude API (`@anthropic-ai/sdk`, tool use)
+· Papaparse · Recharts · deployed on Vercel
 
 ## Running it locally
 
 ```bash
 npm install
-cp .env.example .env.local   # then add your ANTHROPIC_API_KEY
+cp .env.example .env.local   # add your ANTHROPIC_API_KEY
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) and either drop in your own CSV, or click
-"try it instantly with sample data" (no file needed — this is also what a visitor to the live
-demo sees, so it works with zero setup for anyone, recruiters included). Then ask things like:
+Open `localhost:3000`. Either drop in your own CSV or click "try it instantly with sample data"
+(510 rows, a dozen sales reps, a full year — the same dataset the live demo uses).
 
-- "What's the average order value?"
-- "Break this down by region as a bar chart"
-- "What are the top 5 customers by revenue?"
-- "How many rows have status = cancelled?"
+## Running your own deployment
 
-## Pushing to GitHub
+The live link above already works for anyone — this section is only for standing up a separate
+copy under your own Anthropic key.
 
 ```bash
-git init
-git add -A
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin https://github.com/<your-username>/datachat.git
-git push -u origin main
+git clone <this-repo-url>
+cd datachat
 ```
 
-(Create the empty `datachat` repo on GitHub first, without a README or .gitignore, so there's
-nothing to conflict with.)
+Push it to your own GitHub, import it at [vercel.com/new](https://vercel.com/new) (Next.js is
+auto-detected, no config needed), add `ANTHROPIC_API_KEY` under the project's environment
+variables, deploy.
 
-## Deploying your own copy
+## Known limitations
 
-1. Push this repo to your own GitHub account (see above).
-2. Import it into [Vercel](https://vercel.com/new) — it auto-detects Next.js, no config needed.
-3. Add an environment variable `ANTHROPIC_API_KEY` in the Vercel project settings (get a key at
-   [console.anthropic.com](https://console.anthropic.com)).
-4. Deploy.
-
-## Notes / limitations
-
-This is a portfolio-scale build, not a production data platform:
-
-- Rows are capped at 5,000 for the aggregation step, to keep API payloads reasonable — plenty for
-  a demo CSV, not for a data warehouse.
-- The whole (capped) dataset is sent to the serverless function on each question, so very large
-  files will be slow. A production version would push the data into a real database or DuckDB
-  instance and have the model generate SQL instead of calling a fixed set of aggregation ops.
-- No auth, no persistence — uploads live only in the browser tab.
+- Rows are capped at 5,000 per question to keep the payload to the serverless function
+  reasonable. Fine for a demo CSV, not a data warehouse.
+- The whole (capped) dataset is sent to the API route on every question — a real product would
+  push it into a database or DuckDB and have the model generate SQL instead of calling a fixed
+  set of aggregation ops.
+- No auth, no persistence. Uploads live only in the browser tab.
